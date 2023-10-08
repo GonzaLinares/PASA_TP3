@@ -47,18 +47,20 @@ def getNextPowerOfTwo(len):
     return 2**(len*2).bit_length()
 
 
-def get_optimal_params(x, y, M):
+def get_optimal_params(x, M):
 
+    lags = sp.correlation_lags(len(x), len(x))
     N = len(x)
-    r = sp.correlate(x, x)/N
-    p = sp.correlate(x, y)/N
-    r = r[N-1:N-1 + M]
-    # Correlate calcula la cross-corr r(-k), y necesitamos r(k), y esto no es par como la autocorrelacion
-    p = p[N-1:N-1-(M):-1]
+    rx = sp.correlate(x, x)/N
+
+    r = rx[np.array(M > lags) == np.array(lags >= 0)]
+
+    p = rx[np.array(-1 >= lags) == np.array(lags >= -M)][-1::-1]
+
     wo = lin.solve_toeplitz(r, p)
 
-    jo = np.var(y) - np.dot(p, wo)
+    jo = np.var(x) - np.dot(p, wo)
 
-    NMSE = jo/np.var(y)
+    NMSE = jo/np.var(x)
 
     return wo, jo, NMSE
