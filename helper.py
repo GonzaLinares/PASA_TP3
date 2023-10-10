@@ -4,6 +4,8 @@ import scipy.signal as sp
 import IPython.display as ipd
 import numpy as np
 import scipy.linalg as lin
+from numpy.fft import fft, rfft
+from numpy.fft import fftshift, fftfreq, rfftfreq
 
 
 def saveSignalAsWAV(name, signal, fs):
@@ -64,3 +66,28 @@ def get_optimal_params(x, M):
     NMSE = jo/np.var(x)
 
     return wo, jo, NMSE
+
+
+def periodogram_averaging(data, fs, L, padding_multiplier, window):
+    wind = window(L)
+    # Normalizamos la ventana para que sea asintoticamente libre de bias
+
+    def getChuncks(lst, K): return [lst[i:i + K]
+                                    for i in range(0, len(lst), K)][:-1]
+    corrFact = np.sqrt(L/np.square(wind).sum())
+    wind = wind*corrFact
+    dataChunks = getChuncks(data, L)*wind
+    fftwindowSize = L*padding_multiplier
+    freqs = rfftfreq(fftwindowSize, 1/fs)
+    periodogram = np.zeros(len(freqs))
+    for i in range(len(dataChunks)):
+        # Se van agregando al promediado los periodogramas de cada bloque calculado a partir de la FFT del señal en el tiempo
+        periodogram = periodogram + \
+            np.abs(rfft(dataChunks[i], fftwindowSize))**2/(L*len(dataChunks))
+
+    return freqs, periodogram, len(dataChunks)
+
+
+windows = ['boxcar', 'triang', 'parzen', 'bohman', 'blackman', 'nuttall',
+           'blackmanharris', 'flattop', 'bartlett', 'barthann',
+           'hamming', ('kaiser', 10), ('tukey', 0.25)]
